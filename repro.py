@@ -2,6 +2,9 @@
 from PySide import QtCore, QtGui, phonon, QtUiTools
 from PySide.phonon import Phonon
 
+from videopanel import player
+
+
 class Reproductor(QtGui.QWidget):
 
     def __init__(self):
@@ -31,6 +34,8 @@ class Reproductor(QtGui.QWidget):
             self.play)
         self.mediaObject.tick.connect(self.alAvanzar)
         self.mediaObject.stateChanged.connect(self.alCambiarEstado)
+        #----------------------
+        self.player = None
 
     def alAvanzar(self, tiempo):
         displayTime = QtCore.QTime(
@@ -46,27 +51,40 @@ class Reproductor(QtGui.QWidget):
             self.ui.btnPlay.setText("||")  # .setEnabled(False)
 
     def play(self):
-        if self.mediaObject.state() == Phonon.State.PlayingState:
-            self.mediaObject.pause()
-            self.ui.btnPlay.setText(">")
+        if self.player:
+            if self.player.state() == Phonon.State.PlayingState:
+                self.player.pause()
+                self.player.show()
+                self.ui.btnPlay.setText(">")
+            else:
+                self.player.show()
+                self.player.play()
+                self.ui.lblNombre.setText(self.player.file_path)
+                self.ui.btnPlay.setText("||")
         else:
-            self.mediaObject.play()
-            #///////////////////////////////////
-            meta = self.mediaObject.metaData()
-            meta["TITLE"] = meta["TITLE"] if "TITLE" in meta else "Indefinido"
-            meta["ARTIST"] = meta[
-                "ARTIST"] if "ARTIST" in meta else "SinNombre"
-            label = "{TITLE} by {ARTIST}".format(**meta)
-            self.ui.lblNombre.setText(label)
-            #///////////////////////////////////
-            self.ui.btnPlay.setText("||")
+            if self.mediaObject.state() == Phonon.State.PlayingState:
+                self.mediaObject.pause()
+                self.ui.btnPlay.setText(">")
+            else:
+                self.mediaObject.play()
+                #///////////////////////////////////
+                meta = self.mediaObject.metaData()
+                print(meta)
+                meta["TITLE"] = meta[
+                    "TITLE"] if "TITLE" in meta else "Indefinido"
+                meta["ARTIST"] = meta[
+                    "ARTIST"] if "ARTIST" in meta else "SinNombre"
+                label = "{TITLE} by {ARTIST}".format(**meta)
+                self.ui.lblNombre.setText(label)
+                #///////////////////////////////////
+                self.ui.btnPlay.setText("||")
 
     def openFile(self):
         fileName = QtGui.QFileDialog.getOpenFileName(
             self,
             u"Abrir Archivo",
-            u"/",
-            u"Archivos de Audio (*.mp3 *.wav *.ogg)")
+            u".",
+            u"Archivos de Audio (*.mp3 *.wav *.ogg);;Archivos de Video (*.mp4 *.mpg *.avi)")
         if fileName[1]:
             self.path = fileName[0]
             self.mediaObject.setCurrentSource(
@@ -74,6 +92,12 @@ class Reproductor(QtGui.QWidget):
             self.ui.btnPlay.setText(">")
             self.ui.lblNombre.setText("...")
             self.ui.lcdAvance.display("00:00")
+            if fileName[0][-3:] in "mp4 mpg avi".split():
+                self.player = player(fileName[0])
+                self.player.alAvanzar = self.alAvanzar
+                self.player.alCambiarEstado = self.alCambiarEstado
+            else:
+                self.player = None
 
 if __name__ == "__main__":
     import sys
